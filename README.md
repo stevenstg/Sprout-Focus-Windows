@@ -19,6 +19,8 @@
 
 </div>
 
+![Before / After Sprout](docs/preview.jpg)
+
 ---
 
 ---
