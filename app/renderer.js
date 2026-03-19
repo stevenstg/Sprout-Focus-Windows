@@ -110,6 +110,7 @@ function showToast(message, tone = 'normal') {
 
 function openDrawer(name) {
   el(`${name}-drawer-overlay`).classList.remove('hidden');
+  if (name === 'rules') renderDrawerActiveSummary();
 }
 
 function closeDrawer(name) {
@@ -118,6 +119,60 @@ function closeDrawer(name) {
     renderCompactRuleSummary();
     renderDraftSummary();
   }
+}
+
+function switchRulesTab(name) {
+  document.querySelectorAll('.drawer-tab').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.tab === name);
+  });
+  ['windows', 'domains', 'categories'].forEach((tab) => {
+    el(`drawer-tab-${tab}`)?.classList.toggle('hidden', tab !== name);
+  });
+}
+
+function renderDrawerActiveSummary() {
+  const container = el('drawer-active-summary');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const hasAny = state.allowedWindows.length || state.allowedDomains.length || state.allowedCategories.length;
+  if (!hasAny) {
+    const p = document.createElement('p');
+    p.className = 'muted small';
+    p.textContent = '尚未选择任何规则';
+    container.appendChild(p);
+    return;
+  }
+
+  function addGroup(label, items) {
+    if (!items.length) return;
+    const row = document.createElement('div');
+    row.className = 'drawer-summary-row';
+    const lbl = document.createElement('span');
+    lbl.className = 'drawer-summary-label';
+    lbl.textContent = label;
+    row.appendChild(lbl);
+    const wrap = document.createElement('div');
+    wrap.className = 'drawer-summary-chips';
+    items.forEach(({ text, color }) => {
+      const chip = document.createElement('span');
+      chip.className = 'drawer-summary-chip';
+      if (color) {
+        const dot = document.createElement('span');
+        dot.className = 'color-dot';
+        dot.style.background = color;
+        chip.appendChild(dot);
+      }
+      chip.appendChild(document.createTextNode(text));
+      wrap.appendChild(chip);
+    });
+    row.appendChild(wrap);
+    container.appendChild(row);
+  }
+
+  addGroup('窗口', state.allowedWindows.map((w) => ({ text: w.label || w.initialTitle || w.processName || '未命名窗口' })));
+  addGroup('域名', state.allowedDomains.map((d) => ({ text: d.domain })));
+  addGroup('分类', state.allowedCategories.map((c) => ({ text: c.name, color: c.color })));
 }
 
 function updateHeroIdleTimer() {
@@ -186,14 +241,13 @@ function renderContext(context) {
   state.currentContext = context || state.currentContext;
   const current = state.currentContext || {};
   const title = current.title || '等待检测';
-  const meta = [current.processName, current.processPath].filter(Boolean).join(' · ') || '—';
-  const detail = current.domain ? `${current.domain}${current.url ? ` · ${current.url}` : ''}` : (current.source ? `来源：${current.source}` : '—');
+  const meta = current.processName || '—';
   el('context-title').textContent = title;
   el('context-meta').textContent = meta;
-  el('context-detail').textContent = detail;
+  el('context-detail').textContent = '';
   el('live-context-title').textContent = title;
   el('live-context-meta').textContent = meta;
-  el('live-context-detail').textContent = detail;
+  el('live-context-detail').textContent = '';
   el('context-json').textContent = JSON.stringify(current, null, 2);
 }
 
@@ -248,6 +302,7 @@ function renderAllowedLists() {
 
   renderDraftSummary();
   renderCompactRuleSummary();
+  renderDrawerActiveSummary();
 }
 
 function renderCategoryRules() {
@@ -404,7 +459,7 @@ function fillCategoryEditor(rule) {
 function resetCategoryEditor() {
   el('category-name-input').value = '';
   el('category-pattern-input').value = '';
-  el('category-color-input').value = '#a78bfa';
+  el('category-color-input').value = '#e2ebd7';
   delete el('save-category-btn').dataset.editingId;
 }
 
@@ -785,6 +840,11 @@ function bindEvents() {
         if (!el(`${name}-drawer-overlay`).classList.contains('hidden')) closeDrawer(name);
       });
     }
+  });
+
+  // Rules drawer tabs
+  document.querySelectorAll('.drawer-tab').forEach((btn) => {
+    btn.addEventListener('click', () => switchRulesTab(btn.dataset.tab));
   });
 
   // Rules editing

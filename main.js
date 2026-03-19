@@ -221,6 +221,7 @@ function createWindow() {
     minWidth: 980,
     minHeight: 700,
     title: 'Sprout',
+    icon: path.join(__dirname, 'app', 'icon.ico'),
     backgroundColor: '#0f172a',
     webPreferences: {
       preload: path.join(__dirname, 'app', 'preload.cjs'),

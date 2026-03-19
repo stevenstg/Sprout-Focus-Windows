@@ -189,38 +189,58 @@
           <button id="close-rules-drawer" class="btn ghost">完成</button>
         </div>
 
-        <section class="panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">允许窗口</p>
-              <h3>按当前活跃窗口加入</h3>
-            </div>
-            <button id="capture-window-btn" class="btn primary">加入当前窗口</button>
-          </div>
-          <div id="windows-empty" class="empty">还没有允许窗口。先把目标窗口切到前台，再点右上角按钮。</div>
-          <div id="windows-list" class="chips"></div>
+        <!-- Active rules summary (always visible at top) -->
+        <section class="panel drawer-active-summary">
+          <p class="eyebrow">本轮已选规则</p>
+          <div id="drawer-active-summary" class="drawer-summary-scroll"></div>
         </section>
 
-        <section class="panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">允许域名</p>
-              <h3>浏览器标签页按域名放行</h3>
-            </div>
-          </div>
-          <div class="domain-form">
-            <input id="domain-input" type="text" placeholder="例如 chat.openai.com 或 https://docs.github.com" />
-            <select id="domain-mode">
-              <option value="subdomain">包含子域名</option>
-              <option value="exact">精确匹配</option>
-            </select>
-            <button id="add-domain-btn" class="btn secondary">添加域名</button>
-          </div>
-          <div id="domains-empty" class="empty">没有域名规则时，只能靠窗口或分类规则放行浏览器。</div>
-          <div id="domains-list" class="chips"></div>
-        </section>
+        <!-- Tab bar -->
+        <div class="drawer-tabs">
+          <button class="drawer-tab active" data-tab="windows">允许窗口</button>
+          <button class="drawer-tab" data-tab="domains">允许域名</button>
+          <button class="drawer-tab" data-tab="categories">分类规则</button>
+        </div>
 
-        <div class="grid category-layout">
+        <!-- Tab: 允许窗口 -->
+        <div class="drawer-tab-panel" id="drawer-tab-windows">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">允许窗口</p>
+                <h3>按当前活跃窗口加入</h3>
+              </div>
+              <button id="capture-window-btn" class="btn primary">加入当前窗口</button>
+            </div>
+            <div id="windows-empty" class="empty">还没有允许窗口。先把目标窗口切到前台，再点右上角按钮。</div>
+            <div id="windows-list" class="chips"></div>
+          </section>
+        </div>
+
+        <!-- Tab: 允许域名 -->
+        <div class="drawer-tab-panel hidden" id="drawer-tab-domains">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">允许域名</p>
+                <h3>浏览器标签页按域名放行</h3>
+              </div>
+            </div>
+            <div class="domain-form">
+              <input id="domain-input" type="text" placeholder="例如 chat.openai.com 或 https://docs.github.com" />
+              <select id="domain-mode">
+                <option value="subdomain">包含子域名</option>
+                <option value="exact">精确匹配</option>
+              </select>
+              <button id="add-domain-btn" class="btn secondary">添加域名</button>
+            </div>
+            <div id="domains-empty" class="empty">没有域名规则时，只能靠窗口或分类规则放行浏览器。</div>
+            <div id="domains-list" class="chips"></div>
+          </section>
+        </div>
+
+        <!-- Tab: 分类规则 -->
+        <div class="drawer-tab-panel hidden" id="drawer-tab-categories">
           <section class="panel">
             <div class="panel-head">
               <div>
@@ -233,7 +253,7 @@
             <div class="category-form">
               <input id="category-name-input" type="text" placeholder="分类名，例如 AI" />
               <input id="category-pattern-input" type="text" placeholder="pattern，例如 ChatGPT|Claude|Gemini" />
-              <input id="category-color-input" type="color" value="#a78bfa" />
+              <input id="category-color-input" type="color" value="#e2ebd7" />
               <button id="save-category-btn" class="btn secondary">保存分类</button>
             </div>
             <div id="category-rule-list" class="rule-list"></div>
@@ -249,12 +269,12 @@
             <div id="selected-categories-empty" class="empty">还没有把任何分类加入本轮专注。</div>
             <div id="selected-categories-list" class="chips"></div>
           </section>
-        </div>
 
-        <section class="panel">
-          <p class="small label">开局说明</p>
-          <p class="muted small">运行后规则会锁定。系统安全白名单会自动放行 Windows 关键窗口，避免把资源管理器和系统壳层误判成违规。</p>
-        </section>
+          <section class="panel">
+            <p class="small label">开局说明</p>
+            <p class="muted small">运行后规则会锁定。系统安全白名单会自动放行 Windows 关键窗口，避免把资源管理器和系统壳层误判成违规。</p>
+          </section>
+        </div>
       </div>
     </div>
 
