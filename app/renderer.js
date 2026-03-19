@@ -19,7 +19,6 @@ const state = {
   allowedDomains: [],
   categoryRules: loadCategoryRules(),
   allowedCategories: [],
-  activeMainTab: 'rules',
   exitDifficulty: 'easy',
   challengeTimer: null,
   historyFiles: [],
@@ -28,12 +27,6 @@ const state = {
 };
 
 const el = (id) => document.getElementById(id);
-const tabHeading = {
-  rules: '规则',
-  focus: '专注',
-  history: '历史',
-  settings: '设置',
-};
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -52,6 +45,24 @@ function loadCategoryRules() {
 
 function persistCategoryRules() {
   localStorage.setItem('forest-category-rules', JSON.stringify(state.categoryRules));
+}
+
+function loadLastRules() {
+  try {
+    const saved = localStorage.getItem('sprout-last-rules');
+    if (!saved) return null;
+    return JSON.parse(saved);
+  } catch {
+    return null;
+  }
+}
+
+function persistLastRules() {
+  localStorage.setItem('sprout-last-rules', JSON.stringify({
+    allowedWindows: state.allowedWindows,
+    allowedDomains: state.allowedDomains,
+    allowedCategories: state.allowedCategories,
+  }));
 }
 
 function normalizeDomain(input) {
@@ -97,15 +108,58 @@ function showToast(message, tone = 'normal') {
   showToast.timer = setTimeout(() => toast.classList.remove('show'), 2600);
 }
 
-function setMainTab(name) {
-  state.activeMainTab = name;
-  document.querySelectorAll('[data-main-tab]').forEach((button) => {
-    button.classList.toggle('active', button.dataset.mainTab === name);
+function openDrawer(name) {
+  el(`${name}-drawer-overlay`).classList.remove('hidden');
+}
+
+function closeDrawer(name) {
+  el(`${name}-drawer-overlay`).classList.add('hidden');
+  if (name === 'rules') {
+    renderCompactRuleSummary();
+    renderDraftSummary();
+  }
+}
+
+function updateHeroIdleTimer() {
+  const minutes = Number(el('duration-minutes')?.value || 25);
+  el('hero-idle-timer').textContent = `${String(minutes).padStart(2, '0')}:00`;
+}
+
+function renderFocusView() {
+  const status = state.session?.status || 'idle';
+  const headings = { idle: '准备专注', running: '专注中...', completed: '专注完成', cancelled: '专注结束' };
+  el('main-heading').textContent = headings[status] || '准备专注';
+  el('live-context-panel').classList.toggle('hidden', status !== 'running');
+  el('violations-panel').classList.toggle('hidden', status === 'idle');
+  el('edit-rules-btn').classList.toggle('hidden', status === 'running');
+  renderCompactRuleSummary();
+}
+
+function renderCompactRuleSummary() {
+  const parts = [];
+  if (state.allowedWindows.length) parts.push(`${state.allowedWindows.length} 个窗口`);
+  if (state.allowedDomains.length) parts.push(`${state.allowedDomains.length} 条域名`);
+  if (state.allowedCategories.length) parts.push(state.allowedCategories.map((c) => c.name).join(', '));
+
+  const hasRules = !!(state.allowedWindows.length || state.allowedDomains.length || state.allowedCategories.length);
+  el('rule-summary-text').textContent = hasRules ? parts.join(' · ') : '尚未配置规则';
+
+  const chips = el('rule-summary-chips');
+  chips.innerHTML = '';
+  state.allowedWindows.forEach((w) => {
+    chips.appendChild(makeChip(w.label || w.processName || '未命名窗口'));
   });
-  document.querySelectorAll('.tab-panel').forEach((panel) => {
-    panel.classList.toggle('active', panel.id === `tab-${name}`);
+  state.allowedDomains.forEach((d) => {
+    chips.appendChild(makeChip(d.domain));
   });
-  el('main-heading').textContent = tabHeading[name] || '规则';
+  state.allowedCategories.forEach((c) => {
+    chips.appendChild(makeChip(c.name, { category: true, color: c.color }));
+  });
+
+  const startBtn = el('start-session-btn');
+  if (startBtn) startBtn.disabled = !hasRules;
+  const hint = el('hero-rules-hint');
+  if (hint) hint.classList.toggle('hidden', hasRules);
 }
 
 function renderDraftSummary() {
@@ -193,6 +247,7 @@ function renderAllowedLists() {
   })));
 
   renderDraftSummary();
+  renderCompactRuleSummary();
 }
 
 function renderCategoryRules() {
@@ -264,10 +319,8 @@ function renderFocusState(session) {
   const idle = el('focus-state-idle');
   const running = el('focus-state-running');
   const result = el('focus-state-result');
-  const holdPanel = el('focus-hold-panel');
   const resultSummaryGrid = el('result-summary-grid');
   [idle, running, result].forEach((node) => node.classList.remove('active'));
-  holdPanel.classList.add('hidden');
   resultSummaryGrid.classList.add('hidden');
 
   if (!session || session.status === 'idle') {
@@ -275,12 +328,12 @@ function renderFocusState(session) {
     el('latest-violation-title').textContent = '暂无';
     el('latest-violation-reason').textContent = '还没有拦截记录。';
     idle.classList.add('active');
+    updateHeroIdleTimer();
     return;
   }
 
   if (session.status === 'running') {
     running.classList.add('active');
-    holdPanel.classList.remove('hidden');
     el('running-timer').textContent = formatTime(session.remainingMs);
     el('running-subtitle').textContent = `窗口 ${session.allowedWindows.length} 个，域名 ${session.allowedDomains.length} 条，分类 ${session.allowedCategories.length} 条`;
     el('metric-violations').textContent = String(session.violationCount || 0);
@@ -331,11 +384,13 @@ function renderSession(session) {
   renderContext(session.currentContext);
   renderFocusState(session);
   renderViolations(session.violations || [], 'violations-list', 'violations-empty');
+  renderViolations(session.violations || (session.summary?.violations) || [], 'violations-result-list', 'violations-result-empty');
   renderSummaryLists(session.summary || {
     allowedWindows: session.allowedWindows,
     allowedDomains: session.allowedDomains,
     allowedCategories: session.allowedCategories,
   });
+  renderFocusView();
 }
 
 function fillCategoryEditor(rule) {
@@ -501,6 +556,14 @@ async function refreshInitialState() {
     return;
   }
 
+  // Load last used rules from localStorage
+  const lastRules = loadLastRules();
+  if (lastRules) {
+    state.allowedWindows = lastRules.allowedWindows || [];
+    state.allowedDomains = lastRules.allowedDomains || [];
+    state.allowedCategories = lastRules.allowedCategories || [];
+  }
+
   try {
     const [session, context] = await Promise.all([api.getState(), api.getCurrentContext()]);
     renderSession(session);
@@ -576,6 +639,7 @@ async function handleStartSession() {
   }
 
   try {
+    persistLastRules();
     const session = await api.startSession({
       durationMinutes,
       allowedWindows: state.allowedWindows,
@@ -584,7 +648,6 @@ async function handleStartSession() {
       exitProtection: { type: 'typing' },
     });
     renderSession(session);
-    setMainTab('focus');
     showToast('专注已开始');
   } catch (error) {
     showToast(error.message || '开始专注失败', 'danger');
@@ -595,7 +658,6 @@ async function stopSession() {
   try {
     const session = await api.endSession({ reason: 'cancelled' });
     renderSession(session);
-    setMainTab('focus');
     await refreshHistoryFiles();
     showToast('已结束本轮专注');
   } catch (error) {
@@ -613,11 +675,10 @@ async function backToRules() {
     renderSession(idle);
     renderAllowedLists();
     renderCategoryRules();
-    setMainTab('rules');
-    showToast('已回到规则页');
+    showToast('规则已保留，可以开始新专注');
   } catch (error) {
     console.error(error);
-    showToast(error.message || '返回规则页失败', 'danger');
+    showToast(error.message || '重置失败', 'danger');
   }
 }
 
@@ -699,16 +760,45 @@ async function confirmExitChallenge() {
 }
 
 function bindEvents() {
-  document.querySelectorAll('[data-main-tab]').forEach((button) => {
-    button.addEventListener('click', () => setMainTab(button.dataset.mainTab));
+  // Drawer open/close
+  el('edit-rules-btn').addEventListener('click', () => openDrawer('rules'));
+  el('close-rules-drawer').addEventListener('click', () => closeDrawer('rules'));
+  el('open-history-btn').addEventListener('click', () => {
+    openDrawer('history');
+    refreshHistoryFiles();
+  });
+  el('close-history-drawer').addEventListener('click', () => closeDrawer('history'));
+  el('open-settings-btn').addEventListener('click', () => openDrawer('settings'));
+  el('close-settings-drawer').addEventListener('click', () => closeDrawer('settings'));
+
+  // Close drawer on backdrop click
+  ['rules', 'history', 'settings'].forEach((name) => {
+    el(`${name}-drawer-overlay`).addEventListener('click', (e) => {
+      if (e.target === el(`${name}-drawer-overlay`)) closeDrawer(name);
+    });
   });
 
+  // Close drawer on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      ['rules', 'history', 'settings'].forEach((name) => {
+        if (!el(`${name}-drawer-overlay`).classList.contains('hidden')) closeDrawer(name);
+      });
+    }
+  });
+
+  // Rules editing
   el('capture-window-btn').addEventListener('click', handleCaptureWindow);
   el('add-domain-btn').addEventListener('click', handleAddDomain);
   el('save-category-btn').addEventListener('click', upsertCategoryRule);
   el('restore-default-categories-btn').addEventListener('click', restoreDefaultCategories);
+
+  // Session
   el('start-session-btn').addEventListener('click', handleStartSession);
   el('back-to-rules-btn').addEventListener('click', backToRules);
+  el('duration-minutes').addEventListener('input', updateHeroIdleTimer);
+
+  // Context refresh
   el('refresh-context-btn').addEventListener('click', async () => {
     try {
       const context = await api.getCurrentContext();
@@ -718,15 +808,21 @@ function bindEvents() {
       showToast(error.message || '刷新失败', 'danger');
     }
   });
+
+  // History
   el('refresh-history-btn').addEventListener('click', refreshHistoryFiles);
   el('open-history-dir-btn').addEventListener('click', async () => {
     await api.openHistoryDirectory();
   });
+
+  // Settings
   el('save-settings-btn').addEventListener('click', saveSettings);
   el('refresh-aw-settings-btn').addEventListener('click', async () => {
     await refreshGuardianHealth();
     showToast('已刷新 AW 诊断');
   });
+
+  // Exit challenge
   el('exit-challenge-btn').addEventListener('click', showExitChallenge);
   el('challenge-cancel-btn').addEventListener('click', hideExitChallenge);
   el('challenge-confirm-btn').addEventListener('click', confirmExitChallenge);
@@ -739,7 +835,6 @@ function bindEvents() {
     const previousStatus = state.session?.status;
     renderSession(session);
     if (previousStatus === 'running' && (session.status === 'completed' || session.status === 'cancelled')) {
-      setMainTab('focus');
       await refreshHistoryFiles();
     }
   });
@@ -750,6 +845,6 @@ function bindEvents() {
 }
 
 bindEvents();
-setMainTab('rules');
+renderFocusView();
 refreshInitialState();
 setInterval(refreshGuardianHealth, 4000);
