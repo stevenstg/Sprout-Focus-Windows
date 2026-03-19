@@ -143,6 +143,13 @@ export function getDefaultSystemSafelistRules() {
       description: '放行常见打开、保存、浏览文件夹、通知和系统对话框。',
       titlePatterns: ['打开', '另存为', '保存为', '选择文件', '浏览文件夹', '选择文件夹', '通知', '系统托盘溢出窗口'],
     }),
+    createSystemSafelistRule({
+      id: 'system-screenshot',
+      name: '截图工具',
+      description: '放行 Windows 截图工具（截图和草图、Snipping Tool）及截图相关覆盖层。',
+      processPatterns: ['SnippingTool.exe', 'ScreenSketch.exe', 'ScreenClippingHost.exe'],
+      titlePatterns: ['截图和草图', 'Snipping Tool', '截图工具', 'Screen Snip'],
+    }),
   ];
 }
 
