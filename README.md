@@ -33,15 +33,35 @@ ActivityWatch 不是强依赖，没有它软件依然可以正常运行，只是
 
 ## 快速开始
 
+### 前置要求
+
+| 依赖 | 版本 | 说明 |
+|------|------|------|
+| [Node.js](https://nodejs.org/) | 18 以上 | 运行时 |
+| [Git](https://git-scm.com/) | 任意 | 克隆仓库 |
+| [ActivityWatch](https://activitywatch.net/) | 最新版 | 可选，用于浏览器标签页感知 |
+
+> ActivityWatch 需要同时安装对应的浏览器扩展（[Chrome](https://chrome.google.com/webstore/detail/activitywatch-web-watcher/nglaklhklhcoonedhgnpgddginnjdadi) / [Firefox](https://addons.mozilla.org/en-US/firefox/addon/aw-watcher-web/)）才能上报标签页数据。
+
+### 安装与运行
+
 ```bash
-# 安装依赖
+# 1. 克隆仓库
+git clone https://github.com/stevenstg/Sprout-Windows.git
+cd Sprout-Windows
+
+# 2. 安装依赖
 npm install
 
-# 启动
+# 3. 启动
 npm start
 ```
 
-建议同时安装并运行 [ActivityWatch](https://activitywatch.net/) 以获得浏览器标签页级别的感知能力。
+### 推荐顺序
+
+1. 启动 ActivityWatch（后台运行即可）
+2. 在浏览器安装 ActivityWatch Web Watcher 扩展
+3. 启动 Sprout，侧边栏 AW 状态变为"已连接"即表示域名感知生效
 
 ---
 
