@@ -145,3 +145,15 @@ npm start
 - **ActivityWatch REST API** — 浏览器域名上下文感知
 - **node-window-manager** — 窗口最小化 / 恢复
 - **active-win** — 前台窗口检测
+
+---
+
+<div align="center">
+
+如果 Sprout 帮你守住过一次专注，欢迎点个 Star ⭐
+
+[![GitHub stars](https://img.shields.io/github/stars/stevenstg/Sprout-Windows?style=social)](https://github.com/stevenstg/Sprout-Windows/stargazers)
+
+有 bug 或想法？[开一个 Issue](https://github.com/stevenstg/Sprout-Windows/issues) · 欢迎 [Pull Request](https://github.com/stevenstg/Sprout-Windows/pulls)
+
+</div>
