@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sprout</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div>
+          <p class="eyebrow">Sprout</p>
+          <h1>专注白名单</h1>
+          <p class="muted">按窗口、域名、分类和系统安全白名单共同守住当前这轮专注。</p>
+        </div>
+
+        <section class="status-card">
+          <div class="status-row">
+            <span>ActivityWatch</span>
+            <span id="aw-badge" class="badge badge-offline">未连接</span>
+          </div>
+          <p id="aw-note" class="muted small">正在探测本机 AW 服务</p>
+          <p id="aw-debug" class="muted small">bucket: —</p>
+        </section>
+
+        <section class="status-card">
+          <p class="small label">当前前台上下文</p>
+          <h3 id="context-title">等待检测</h3>
+          <p id="context-meta" class="muted small">—</p>
+          <p id="context-detail" class="muted small">—</p>
+        </section>
+
+        <section class="status-card compact-list">
+          <p class="small label">本轮草稿</p>
+          <div class="status-pair"><span>窗口</span><strong id="draft-window-count">0</strong></div>
+          <div class="status-pair"><span>域名</span><strong id="draft-domain-count">0</strong></div>
+          <div class="status-pair"><span>分类</span><strong id="draft-category-count">0</strong></div>
+          <div class="status-pair"><span>系统保护</span><strong id="draft-system-safelist">开</strong></div>
+        </section>
+      </aside>
+
+      <main class="main">
+        <div class="topbar panel">
+          <div>
+            <p class="eyebrow">主工作区</p>
+            <h2 id="main-heading">规则</h2>
+          </div>
+        </div>
+
+        <nav class="main-tabs">
+          <button class="main-tab active" data-main-tab="rules">规则</button>
+          <button class="main-tab" data-main-tab="focus">专注</button>
+          <button class="main-tab" data-main-tab="history">历史</button>
+          <button class="main-tab" data-main-tab="settings">设置</button>
+        </nav>
+
+        <section id="tab-rules" class="tab-panel active">
+          <div class="grid two">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">允许窗口</p>
+                  <h3>按当前活跃窗口加入</h3>
+                </div>
+                <button id="capture-window-btn" class="btn primary">加入当前窗口</button>
+              </div>
+              <div id="windows-empty" class="empty">还没有允许窗口。先把目标窗口切到前台，再点右上角按钮。</div>
+              <div id="windows-list" class="chips"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">允许域名</p>
+                  <h3>浏览器标签页按域名放行</h3>
+                </div>
+              </div>
+              <div class="domain-form">
+                <input id="domain-input" type="text" placeholder="例如 chat.openai.com 或 https://docs.github.com" />
+                <select id="domain-mode">
+                  <option value="subdomain">包含子域名</option>
+                  <option value="exact">精确匹配</option>
+                </select>
+                <button id="add-domain-btn" class="btn secondary">添加域名</button>
+              </div>
+              <div id="domains-empty" class="empty">没有域名规则时，只能靠窗口或分类规则放行浏览器。</div>
+              <div id="domains-list" class="chips"></div>
+            </section>
+          </div>
+
+          <div class="grid category-layout">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">分类规则</p>
+                  <h3>命中标题、进程、路径、域名或 URL 就允许</h3>
+                </div>
+                <button id="restore-default-categories-btn" class="btn ghost">恢复默认分类</button>
+              </div>
+              <p class="muted small">pattern 支持正则；不想写正则就直接用 | 隔开关键词。</p>
+              <div class="category-form">
+                <input id="category-name-input" type="text" placeholder="分类名，例如 AI" />
+                <input id="category-pattern-input" type="text" placeholder="pattern，例如 ChatGPT|Claude|Gemini" />
+                <input id="category-color-input" type="color" value="#a78bfa" />
+                <button id="save-category-btn" class="btn secondary">保存分类</button>
+              </div>
+              <div id="category-rule-list" class="rule-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">本轮已选分类</p>
+                  <h3>命中就允许</h3>
+                </div>
+              </div>
+              <div id="selected-categories-empty" class="empty">还没有把任何分类加入本轮专注。</div>
+              <div id="selected-categories-list" class="chips"></div>
+            </section>
+          </div>
+
+          <section class="panel footer-panel">
+            <div>
+              <p class="small label">开局说明</p>
+              <p class="muted small">运行后规则会锁定。系统安全白名单会自动放行 Windows 关键窗口，避免把资源管理器和系统壳层误判成违规。</p>
+            </div>
+            <div class="footer-actions session-start-actions">
+              <button id="refresh-context-btn" class="btn ghost">刷新当前上下文</button>
+              <div class="session-start-inline">
+                <div class="timer-input timer-input-inline">
+                  <label for="duration-minutes">专注时长</label>
+                  <div class="input-inline">
+                    <input id="duration-minutes" type="number" min="1" max="240" value="25" />
+                    <span>分钟</span>
+                  </div>
+                </div>
+                <button id="start-session-btn" class="btn primary large">开始专注</button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section id="tab-focus" class="tab-panel">
+          <div class="grid two">
+            <section class="panel running-panel">
+              <p class="eyebrow">当前状态</p>
+              <div id="focus-state-idle" class="focus-state active">
+                <h3>还没有在专注中</h3>
+                <p class="muted">去规则页配好窗口、域名或分类后开始。专注结束后的结果也会在这里看。</p>
+              </div>
+              <div id="focus-state-running" class="focus-state">
+                <h2 id="running-timer">25:00</h2>
+                <p id="running-subtitle" class="muted">正在守住你这轮允许规则</p>
+                <div class="metrics">
+                  <div class="metric"><span class="metric-label">违规次数</span><strong id="metric-violations">0</strong></div>
+                  <div class="metric"><span class="metric-label">AW 模式</span><strong id="metric-aw-mode">windows-only</strong></div>
+                </div>
+              </div>
+              <div id="focus-state-result" class="focus-state">
+                <h3 id="result-title">本轮已结束</h3>
+                <p id="result-subtitle" class="muted">—</p>
+                <div class="grid three stats-grid">
+                  <div class="stat-card"><span class="metric-label">总时长</span><strong id="result-duration">0 分钟</strong></div>
+                  <div class="stat-card"><span class="metric-label">违规次数</span><strong id="result-violations">0</strong></div>
+                  <div class="stat-card"><span class="metric-label">结束原因</span><strong id="result-reason">—</strong></div>
+                </div>
+                <button id="back-to-rules-btn" class="btn primary">回到规则页</button>
+              </div>
+            </section>
+
+            <section class="panel">
+              <p class="eyebrow">当前上下文</p>
+              <h3 id="live-context-title">等待检测</h3>
+              <p id="live-context-meta" class="muted small">—</p>
+              <p id="live-context-detail" class="muted small">—</p>
+              <div class="divider"></div>
+              <p class="eyebrow">最近一次违规</p>
+              <h3 id="latest-violation-title">暂无</h3>
+              <p id="latest-violation-reason" class="muted small">还没有拦截记录。</p>
+            </section>
+          </div>
+
+          <div id="result-summary-grid" class="grid result-grid">
+            <section class="panel">
+              <p class="eyebrow">本次允许窗口</p>
+              <div id="result-windows" class="chips"></div>
+            </section>
+            <section class="panel">
+              <p class="eyebrow">本次允许域名</p>
+              <div id="result-domains" class="chips"></div>
+            </section>
+            <section class="panel">
+              <p class="eyebrow">本次允许分类</p>
+              <div id="result-categories" class="chips"></div>
+            </section>
+          </div>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">违规时间线</p>
+                <h3>每次被压制的窗口都会记下来</h3>
+              </div>
+            </div>
+            <div id="violations-empty" class="empty">目前还没有违规。</div>
+            <div id="violations-list" class="timeline"></div>
+          </section>
+
+          <section id="focus-hold-panel" class="panel footer-panel">
+            <div>
+              <p class="small label">退出保护</p>
+              <p id="exit-protection-desc" class="muted small">输入验证短语以结束专注。</p>
+            </div>
+            <div>
+              <button id="exit-challenge-btn" class="btn danger large">结束专注</button>
+            </div>
+          </section>
+        </section>
+
+        <section id="tab-history" class="tab-panel">
+          <div class="panel history-toolbar">
+            <div>
+              <p class="eyebrow">Markdown 历史记录</p>
+              <h3>按天生成，每次专注一个二级标题</h3>
+            </div>
+            <div class="footer-actions">
+              <button id="refresh-history-btn" class="btn ghost">刷新历史</button>
+              <button id="open-history-dir-btn" class="btn secondary">打开历史目录</button>
+            </div>
+          </div>
+
+          <div class="history-layout">
+            <section class="panel">
+              <p class="eyebrow">日期文件</p>
+              <div id="history-files-empty" class="empty">还没有历史记录文件。</div>
+              <div id="history-files-list" class="history-file-list"></div>
+            </section>
+
+            <section class="panel">
+              <p class="eyebrow">会话索引</p>
+              <div id="history-headings-empty" class="empty">先选择一个历史文件。</div>
+              <div id="history-headings-list" class="timeline compact"></div>
+            </section>
+
+            <section class="panel wide">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Markdown 预览</p>
+                  <h3 id="history-preview-title">未选择文件</h3>
+                </div>
+              </div>
+              <pre id="history-preview" class="json-box">请选择左侧文件查看内容。</pre>
+            </section>
+          </div>
+        </section>
+
+        <section id="tab-settings" class="tab-panel">
+          <div class="grid two settings-grid">
+            <section class="panel">
+              <p class="eyebrow">基础设置</p>
+              <div class="settings-form">
+                <label class="setting-row">
+                  <span>历史记录目录</span>
+                  <input id="history-dir-input" type="text" placeholder="历史记录目录" />
+                </label>
+                <label class="setting-switch">
+                  <input id="auto-write-history-input" type="checkbox" />
+                  <span>自动写 Markdown 历史记录</span>
+                </label>
+                <label class="setting-switch">
+                  <input id="system-safelist-enabled-input" type="checkbox" />
+                  <span>启用系统安全白名单</span>
+                </label>
+                <label class="setting-row">
+                  <span>退出验证难度</span>
+                  <select id="exit-difficulty-input">
+                    <option value="easy">简单（固定短语）</option>
+                    <option value="medium">中等（随机符号串）</option>
+                    <option value="hard">困难（生僻汉字）</option>
+                  </select>
+                </label>
+                <div class="footer-actions">
+                  <button id="save-settings-btn" class="btn primary">保存设置</button>
+                  <button id="refresh-aw-settings-btn" class="btn ghost">刷新 AW 诊断</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <p class="eyebrow">AW 诊断</p>
+              <pre id="aw-status-json" class="json-box">{}</pre>
+              <div class="divider"></div>
+              <p class="eyebrow">当前上下文原始对象</p>
+              <pre id="context-json" class="json-box">{}</pre>
+            </section>
+          </div>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">系统安全白名单</p>
+                <h3>可见但默认锁定</h3>
+              </div>
+              <span class="muted small">这些规则当前只展示，不开放编辑</span>
+            </div>
+            <div id="system-safelist-list" class="rule-list"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <div id="exit-challenge-overlay" class="challenge-overlay hidden">
+      <div class="challenge-card">
+        <p class="small label muted">确认结束专注</p>
+        <p class="challenge-timer-line">请在 <span id="challenge-countdown">20</span> 秒内准确输入：</p>
+        <div class="challenge-phrase" id="challenge-phrase">placeholder</div>
+        <input id="challenge-input" class="challenge-input" type="text"
+               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+               placeholder="在此输入…" />
+        <p id="challenge-error" class="challenge-error hidden">内容不匹配，请重新输入。</p>
+        <div class="challenge-actions">
+          <button id="challenge-cancel-btn" class="btn ghost">取消</button>
+          <button id="challenge-confirm-btn" class="btn danger">确认结束</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="./renderer.js"></script>
+  </body>
+</html>

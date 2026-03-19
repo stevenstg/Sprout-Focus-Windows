@@ -1,0 +1,7 @@
+node_modules/
+dist/
+out/
+*.log
+.env
+app/icon.ico
+tmp-logs/
