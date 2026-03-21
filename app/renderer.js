@@ -427,7 +427,7 @@ function renderSummaryLists(summary) {
   categories.innerHTML = '';
   (summary.allowedWindows || []).forEach((item) => windows.appendChild(makeChip(item.label || item.initialTitle || item.processName || '未命名窗口')));
   (summary.allowedDomains || []).forEach((item) => domains.appendChild(makeChip(`${item.domain} · ${item.matchMode === 'exact' ? '精确' : '子域'}`)));
-  (summary.allowedCategories || []).forEach((item) => categories.appendChild(makeChip(`${item.name} · ${item.pattern}`, { category: true, color: item.color })));
+  (summary.allowedCategories || []).forEach((item) => categories.appendChild(makeChip(item.name, { category: true, color: item.color })));
   if (!(summary.allowedWindows || []).length) windows.innerHTML = '<div class="empty">没有窗口规则</div>';
   if (!(summary.allowedDomains || []).length) domains.innerHTML = '<div class="empty">没有域名规则</div>';
   if (!(summary.allowedCategories || []).length) categories.innerHTML = '<div class="empty">没有分类规则</div>';

@@ -4,7 +4,7 @@
   "description": "Windows 专注白名单工具，支持 ActivityWatch 感知增强。",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "electron . 2>&1 | findstr /V \"libpng\"",
     "guardian": "node guardian/child.js",
     "build:icon": "node scripts/build-icon.js",
     "smoke": "node scripts/smoke.js",
