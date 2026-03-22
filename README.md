@@ -38,7 +38,7 @@
 
 会话开始后，Sprout 的守卫进程每 350ms 检查一次前台窗口。不在白名单里的窗口会被立刻最小化，并把焦点拉回到上一个允许的窗口。每次拦截计入违规记录，会话结束后生成 Markdown 摘要。
 
-![屏幕截图 2026-03-22 144501](README.assets/屏幕截图 2026-03-22 144501.png)
+![主界面截图](README.assets/main-ui.png)
 
 放行规则支持两个维度：
 
@@ -65,7 +65,7 @@ Node.js 18+ 是唯一硬性依赖。详见 [Installation](docs/installation.md) 
 
 **退出保护**：会话中点击结束会触发打字验证，防止冲动退出。难度可调整（固定短语 / 随机符号串 / 生僻汉字）。
 
-![屏幕截图 2026-03-22 144520](README.assets/屏幕截图 2026-03-22 144520.png)
+![退出验证截图](README.assets/exit-dialog.png)
 
 **历史记录**：每次会话结束后自动写入 `%DOCUMENTS%\Sprout\history\YYYY-MM-DD.md`。
 
