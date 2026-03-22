@@ -347,26 +347,23 @@ export class GuardianRuntime {
 
     const signature = `${context.windowId}:${context.processPath || context.processName}:${decision.reason}`;
     const now = Date.now();
-    if (signature === this.lastViolation.signature && now - this.lastViolation.at < DUPLICATE_VIOLATION_WINDOW_MS) {
-      const postContext = await this.resolvePostViolationContext(context);
-      this.state.currentContext = postContext;
-      this.lastViolation = this.isStablePostViolationContext(postContext, context)
-        ? { signature: '', at: 0 }
-        : { signature, at: now };
-      this.sendState();
-      return;
-    }
-
-    this.lastViolation = { signature, at: now };
-
     const minimized = context.windowId ? this.windows.minimizeWindow(context.windowId) : false;
     const restored = this.state.recentAllowedWindow?.windowId
       ? this.windows.restoreWindow(this.state.recentAllowedWindow.windowId)
       : false;
     const postContext = await this.resolvePostViolationContext(context);
     this.state.currentContext = postContext;
-    if (this.isStablePostViolationContext(postContext, context)) {
-      this.lastViolation = { signature: '', at: 0 };
+
+    const isDuplicate = signature === this.lastViolation.signature
+      && now - this.lastViolation.at < DUPLICATE_VIOLATION_WINDOW_MS;
+
+    this.lastViolation = this.isStablePostViolationContext(postContext, context)
+      ? { signature: '', at: 0 }
+      : { signature, at: now };
+
+    if (isDuplicate) {
+      this.sendState();
+      return;
     }
 
     const violation = {
