@@ -1,11 +1,10 @@
 import fs from 'node:fs/promises';
 import { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, shell } from 'electron';
-import { spawn } from 'node:child_process';
-import { createInterface } from 'node:readline';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { IPC_CHANNELS, GUARDIAN_MESSAGES, GUARDIAN_REQUESTS } from './shared/ipc.js';
 import { createInitialSessionState, formatRemaining, getDefaultSystemSafelistRules } from './shared/models.js';
+import { GuardianRuntime } from './guardian/runtime.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -80,106 +79,67 @@ class SettingsStore {
 
 class GuardianBridge {
   constructor() {
-    this.process = null;
-    this.readline = null;
-    this.pending = new Map();
-    this.requestId = 0;
+    this.runtime = null;
+    this.started = false;
+    this.startPromise = null;
+    this.bootstrapPayload = null;
+    this.onPush = null;
     this.state = createInitialSessionState();
   }
 
   async start(bootstrapPayload, onPush) {
     this.bootstrapPayload = bootstrapPayload || this.bootstrapPayload;
-    this.onPush = onPush;
-    if (this.process) {
-      return;
-    }
-
-    const nodeBinary = process.env.NODE_BINARY || process.env.npm_node_execpath || 'node';
-    this.process = spawn(nodeBinary, [path.join(__dirname, 'guardian', 'child.js')], {
-      cwd: __dirname,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,
-    });
-
-    this.process.stderr.on('data', (chunk) => {
-      console.error(`[guardian] ${chunk}`.trim());
-    });
-
-    this.readline = createInterface({
-      input: this.process.stdout,
-      crlfDelay: Infinity,
-    });
-
-    this.readline.on('line', (line) => {
-      if (!line.trim()) {
-        return;
-      }
-
-      try {
-        const message = JSON.parse(line);
-        this.#handleMessage(message);
-      } catch (error) {
-        console.error('guardian 消息解析失败', error);
-      }
-    });
-
-    this.process.on('error', (error) => {
-      console.error('guardian 启动失败', error);
-    });
-
-    this.process.on('exit', (code, signal) => {
-      console.error(`guardian 已退出: code=${code} signal=${signal ?? 'none'}`);
-      for (const pending of this.pending.values()) {
-        pending.reject(new Error('guardian 已退出'));
-      }
-      this.pending.clear();
-      this.process = null;
-      this.onPush?.('state', this.state);
-    });
-
-    await this.request(GUARDIAN_REQUESTS.bootstrap, this.bootstrapPayload);
+    this.onPush = onPush || this.onPush;
+    return this.#ensureStarted();
   }
 
   async request(type, payload = {}) {
-    if (!this.process?.stdin && this.bootstrapPayload) {
-      await this.start(this.bootstrapPayload, this.onPush);
-    }
-
-    if (!this.process?.stdin) {
-      throw new Error('guardian 尚未启动');
-    }
-
-    const requestId = `req-${++this.requestId}`;
-    const packet = JSON.stringify({ requestId, type, payload });
-    this.process.stdin.write(`${packet}\n`);
-
-    return new Promise((resolve, reject) => {
-      this.pending.set(requestId, { resolve, reject });
-    });
+    await this.#ensureStarted();
+    return this.runtime.handle({ type, payload });
   }
 
   stop() {
-    if (this.process && !this.process.killed) {
-      this.process.kill();
+    if (this.runtime) {
+      this.runtime.shutdown();
     }
+    this.started = false;
+    this.startPromise = null;
+  }
+
+  async #ensureStarted() {
+    if (this.started) {
+      return { ok: true };
+    }
+
+    if (this.startPromise) {
+      return this.startPromise;
+    }
+
+    if (!this.bootstrapPayload) {
+      throw new Error('guardian 尚未配置启动参数');
+    }
+
+    if (!this.runtime) {
+      this.runtime = new GuardianRuntime({
+        send: (message) => this.#handleMessage(message),
+        logger: console,
+      });
+    }
+
+    this.startPromise = this.runtime.handle({
+      type: GUARDIAN_REQUESTS.bootstrap,
+      payload: this.bootstrapPayload,
+    }).then((result) => {
+      this.started = true;
+      return result;
+    }).finally(() => {
+      this.startPromise = null;
+    });
+
+    return this.startPromise;
   }
 
   #handleMessage(message) {
-    if (message.type === GUARDIAN_MESSAGES.response) {
-      const pending = this.pending.get(message.requestId);
-      if (!pending) {
-        return;
-      }
-
-      this.pending.delete(message.requestId);
-      if (message.ok) {
-        pending.resolve(message.payload);
-      } else {
-        pending.reject(new Error(message.error || 'guardian 请求失败'));
-      }
-      return;
-    }
-
     if (message.type === GUARDIAN_MESSAGES.state) {
       this.state = message.payload;
       this.onPush?.('state', message.payload);
@@ -300,20 +260,21 @@ app.whenReady().then(async () => {
   settingsStore = new SettingsStore(userDataDir);
   appSettings = await settingsStore.load();
   const logDir = path.join(userDataDir, 'logs');
-  await guardian.start({
+  const guardianBootstrap = {
     logDir,
     historyDir: appSettings.historyDir,
     preferences: {
       autoWriteHistory: appSettings.autoWriteHistory,
       systemSafelistEnabled: appSettings.systemSafelistEnabled,
     },
-  }, (kind, payload) => {
+  };
+  const onGuardianPush = (kind, payload) => {
     if (kind === 'state') {
       broadcast(IPC_CHANNELS.push.state, payload);
     } else if (kind === 'violation') {
       broadcast(IPC_CHANNELS.push.violation, payload);
     }
-  });
+  };
 
   ipcMain.handle(IPC_CHANNELS.invoke.getState, async () => guardian.request(GUARDIAN_REQUESTS.getState));
   ipcMain.handle(IPC_CHANNELS.invoke.getSettings, async () => settingsStore.load());
@@ -375,6 +336,10 @@ app.whenReady().then(async () => {
 
   createWindow();
   createTray();
+
+  guardian.start(guardianBootstrap, onGuardianPush).catch((error) => {
+    console.error('guardian 启动失败', error);
+  });
 });
 
 app.on('window-all-closed', (event) => {

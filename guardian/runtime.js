@@ -316,6 +316,14 @@ export class GuardianRuntime {
     }
   }
 
+  shutdown() {
+    this.stopLoops();
+    if (this.contextTrackingTimer) {
+      clearInterval(this.contextTrackingTimer);
+      this.contextTrackingTimer = null;
+    }
+  }
+
   async monitorTick() {
     if (this.state.status !== 'running') {
       return;

@@ -7,6 +7,8 @@
     "start": "electron . 2>&1 | findstr /V \"libpng\"",
     "guardian": "node guardian/child.js",
     "build:icon": "node scripts/build-icon.js",
+    "package:dir": "electron-builder --win dir",
+    "package:win": "electron-builder --win nsis",
     "smoke": "node scripts/smoke.js",
     "check": "node --check main.js && node --check guardian/child.js && node --check guardian/history.js && node --check guardian/rules.js && node --check guardian/runtime.js && node --check guardian/windows-service.js && node --check shared/ipc.js && node --check shared/models.js && node --check app/preload.cjs && node --check app/preload.js && node --check app/renderer.js && node scripts/smoke.js"
   },
@@ -19,8 +21,48 @@
   "license": "ISC",
   "dependencies": {
     "active-win": "^8.2.1",
-    "electron": "^41.0.3",
     "node-window-manager": "^2.2.4"
+  },
+  "devDependencies": {
+    "electron": "^41.0.3",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "com.sprout.focus",
+    "productName": "Sprout",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!tmp-icon/**",
+      "!tmp-forest-history-*/**",
+      "!plans/**",
+      "!README.assets/**",
+      "!docs/**",
+      "!**/*.md"
+    ],
+    "asarUnpack": [
+      "guardian/**",
+      "shared/**"
+    ],
+    "win": {
+      "icon": "app/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   },
   "type": "module"
 }
